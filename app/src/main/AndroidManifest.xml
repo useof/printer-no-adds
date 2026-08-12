@@ -46,6 +46,17 @@
             android:exported="false"
             android:parentActivityName=".ui.MainActivity" />
 
+        <!-- Ecranul de raportare a crash-ului. Proces separat: procesul care a
+             crăpat e pe cale să moară, iar dacă tocmai start-up-ul aplicației e
+             cel stricat, raportul trebuie să pornească fără el. Temă de sistem,
+             nu a aplicației, din același motiv. -->
+        <activity
+            android:name=".ui.CrashActivity"
+            android:exported="false"
+            android:process=":crash"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.DeviceDefault.Light" />
+
         <activity
             android:name=".ui.AddPrinterActivity"
             android:exported="false"
