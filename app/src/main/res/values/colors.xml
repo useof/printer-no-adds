@@ -9,5 +9,9 @@
     <color name="selected_item">#D7F0DF</color>
     <color name="preview_background">#E4E7E3</color>
     <color name="error">#BA1A1A</color>
+    <!-- Culori concrete pentru drawable-uri: acolo ?attr/ nu se poate rezolva
+         (vezi comentariul din bg_printer_item.xml). -->
+    <color name="icon_tint">#414942</color>
+    <color name="ripple">#1F1B6C4A</color>
     <color name="launcher_background">#1B6C4A</color>
 </resources>

@@ -9,4 +9,6 @@
     <color name="selected_item">#22503A</color>
     <color name="preview_background">#2A2D2B</color>
     <color name="error">#FFB4AB</color>
+    <color name="icon_tint">#C0C9C1</color>
+    <color name="ripple">#338ED8AE</color>
 </resources>
