@@ -7,13 +7,16 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Rect;
+import android.graphics.RectF;
+import android.graphics.pdf.PdfDocument;
 import android.net.Uri;
 
 import androidx.annotation.NonNull;
 import androidx.exifinterface.media.ExifInterface;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -25,19 +28,15 @@ import java.util.List;
 public final class ImageToPdf {
 
     /**
-     * Cap on the decoded pixel count. 300 dpi across a full A4 page is roughly
-     * 8.7 megapixels — dincolo de atât nu se mai câștigă nimic la tipar, doar
-     * memorie consumată de o poză de 108 MP și octeți în plus în JPEG.
+     * Rezoluția la care se randează poza, în dpi. PdfDocument înglobează
+     * bitmap-ul necomprimat, deci 300 dpi dădea PDF-uri de zeci de MB pe care
+     * imprimanta le accepta și apoi le lăsa blocate. 150 dpi arată bine la tipar
+     * și ține fișierul de câteva ori mai mic.
      */
-    private static final int MAX_PIXELS = 9_000_000;
+    private static final float RENDER_DPI = 150f;
 
-    /**
-     * Calitatea JPEG a imaginii înglobate. 90 e vizual indistinct de original la
-     * tipar și ține o poză de telefon pe A4 sub 2 MB — necomprimată, aceeași poză
-     * dădea un PDF de peste 20 MB, pe care imprimanta îl accepta și apoi îl lăsa
-     * blocat în „processing", fără să scoată hârtia.
-     */
-    private static final int JPEG_QUALITY = 90;
+    /** Plafon de siguranță: oprește o poză de 108 MP să scoată aplicația din memorie. */
+    private static final int MAX_PIXELS = 4_000_000;
 
     private ImageToPdf() {
     }
@@ -52,32 +51,52 @@ public final class ImageToPdf {
                                @NonNull List<Uri> images,
                                @NonNull PageGeometry geometry,
                                boolean fitToPage,
+                               boolean grayscale,
                                @NonNull File destination) throws IOException {
         if (images.isEmpty()) {
             throw new IOException("No images to print");
         }
 
-        try (OutputStream out = new FileOutputStream(destination);
-             JpegPdfWriter writer = new JpegPdfWriter(out)) {
+        PdfDocument document = new PdfDocument();
+        try {
+            int pageNumber = 1;
             for (Uri image : images) {
                 Bitmap bitmap = decode(context, image, geometry);
                 if (bitmap == null) {
                     throw new IOException("Cannot decode image: " + image);
                 }
                 try {
-                    addPage(writer, bitmap, geometry, fitToPage);
+                    PdfDocument.PageInfo info = new PdfDocument.PageInfo.Builder(
+                            geometry.width, geometry.height, pageNumber++).create();
+                    PdfDocument.Page page = document.startPage(info);
+                    drawCentered(page.getCanvas(), bitmap, geometry, fitToPage, grayscale);
+                    document.finishPage(page);
                 } finally {
                     bitmap.recycle();
                 }
             }
+
+            try (OutputStream out = new FileOutputStream(destination)) {
+                document.writeTo(out);
+            }
+        } finally {
+            document.close();
         }
     }
 
-    /** Așază poza pe pagină, centrată, cât de mare încape, fără să o rotească. */
-    private static void addPage(JpegPdfWriter writer,
-                                Bitmap bitmap,
-                                PageGeometry geometry,
-                                boolean fitToPage) throws IOException {
+    /**
+     * Așază poza centrată, cât de mare încape, fără să o rotească: orientarea o
+     * dă hârtia.
+     *
+     * <p>{@code grayscale} desenează poza alb-negru. Pentru o imprimantă
+     * monocromă asta scoate conversia din firmware-ul ei și scade mult datele
+     * trimise.
+     */
+    private static void drawCentered(Canvas canvas,
+                                     Bitmap bitmap,
+                                     PageGeometry geometry,
+                                     boolean fitToPage,
+                                     boolean grayscale) {
         Rect target = fitToPage
                 ? new Rect(0, 0, geometry.width, geometry.height)
                 : geometry.contentRect();
@@ -89,41 +108,18 @@ public final class ImageToPdf {
         float drawHeight = bitmap.getHeight() * scale;
         float left = target.left + (target.width() - drawWidth) / 2f;
         float top = target.top + (target.height() - drawHeight) / 2f;
-        // PDF numără de jos în sus, spre deosebire de Rect.
-        float bottom = geometry.height - (top + drawHeight);
 
-        byte[] jpeg = toJpeg(bitmap);
-        writer.addPage(geometry.width, geometry.height,
-                jpeg, bitmap.getWidth(), bitmap.getHeight(),
-                left, bottom, drawWidth, drawHeight);
-    }
-
-    /**
-     * Comprimă poza ca JPEG. Transparența se aplatizează peste alb: JPEG nu are
-     * canal alfa, iar fără asta zonele transparente ale unui PNG ies negre.
-     */
-    private static byte[] toJpeg(Bitmap bitmap) throws IOException {
-        Bitmap opaque = bitmap;
-        boolean recycleOpaque = false;
-        if (bitmap.hasAlpha()) {
-            opaque = Bitmap.createBitmap(
-                    bitmap.getWidth(), bitmap.getHeight(), Bitmap.Config.ARGB_8888);
-            Canvas canvas = new Canvas(opaque);
-            canvas.drawColor(Color.WHITE);
-            canvas.drawBitmap(bitmap, 0, 0, new Paint(Paint.FILTER_BITMAP_FLAG));
-            recycleOpaque = true;
+        Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+        if (grayscale) {
+            ColorMatrix matrix = new ColorMatrix();
+            matrix.setSaturation(0);
+            paint.setColorFilter(new ColorMatrixColorFilter(matrix));
         }
-        try {
-            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-            if (!opaque.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, buffer)) {
-                throw new IOException("Could not compress the image");
-            }
-            return buffer.toByteArray();
-        } finally {
-            if (recycleOpaque) {
-                opaque.recycle();
-            }
-        }
+        // Fundal alb sub poză: pagina PDF e transparentă implicit, iar unele
+        // interpretoare simple redau transparența ca negru.
+        canvas.drawColor(Color.WHITE);
+        canvas.drawBitmap(bitmap, null,
+                new RectF(left, top, left + drawWidth, top + drawHeight), paint);
     }
 
     /**
@@ -173,13 +169,12 @@ public final class ImageToPdf {
     }
 
     /**
-     * Picks the power-of-two subsample that lands just above 300 dpi for this
-     * page while staying under {@link #MAX_PIXELS}.
+     * Picks the power-of-two subsample that lands just above {@link #RENDER_DPI}
+     * for this page while staying under {@link #MAX_PIXELS}.
      */
     private static int sampleSizeFor(int width, int height, PageGeometry geometry) {
-        // 300 dpi over a 72-dpi page box means ~4.17 device pixels per point.
-        int targetWidth = (int) (geometry.width * 300f / 72f);
-        int targetHeight = (int) (geometry.height * 300f / 72f);
+        int targetWidth = (int) (geometry.width * RENDER_DPI / 72f);
+        int targetHeight = (int) (geometry.height * RENDER_DPI / 72f);
 
         int sample = 1;
         while ((width / sample) > targetWidth * 2 || (height / sample) > targetHeight * 2) {

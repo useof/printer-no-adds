@@ -218,6 +218,20 @@ public final class PrinterCapabilities {
         return base;
     }
 
+    /**
+     * Formatele de document pe care le declară imprimanta, pentru afișare.
+     *
+     * <p>E informație de diagnostic pusă la vedere intenționat: fără ea nu se
+     * poate spune de ce un job e acceptat și apoi ignorat.
+     */
+    @NonNull
+    public String describeFormats() {
+        if (documentFormats.isEmpty()) {
+            return "formate: nedeclarate";
+        }
+        return "formate: " + String.join(", ", documentFormats);
+    }
+
     /** The first state reason that is not the "nothing is wrong" placeholder. */
     @Nullable
     public String firstRealStateReason() {

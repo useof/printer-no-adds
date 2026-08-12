@@ -51,12 +51,15 @@ public final class DocumentPreparer {
     }
 
     /**
+     * @param grayscale randează imaginile alb-negru; util pentru imprimante
+     *                  monocrome, care altfel trebuie să facă ele conversia.
      * @param container needed only for {@link PrintSource.Kind#WEB_PAGE}, which
      *                  renders through an off-screen WebView.
      */
     @MainThread
     public void prepare(@NonNull PrintSource source,
                         @NonNull PageGeometry geometry,
+                        boolean grayscale,
                         @Nullable ViewGroup container,
                         @NonNull Callback callback) {
 
@@ -84,7 +87,7 @@ public final class DocumentPreparer {
 
         executor.execute(() -> {
             try {
-                File pdf = convertBlocking(source, geometry);
+                File pdf = convertBlocking(source, geometry, grayscale);
                 mainHandler.post(() -> callback.onPrepared(pdf));
             } catch (Exception e) {
                 mainHandler.post(() -> callback.onFailed(e));
@@ -94,8 +97,9 @@ public final class DocumentPreparer {
 
     /** Blocking conversion for everything that does not need the main thread. */
     @NonNull
-    public File convertBlocking(@NonNull PrintSource source, @NonNull PageGeometry geometry)
-            throws IOException {
+    public File convertBlocking(@NonNull PrintSource source,
+                                @NonNull PageGeometry geometry,
+                                boolean grayscale) throws IOException {
         File destination = DocumentUtils.newJobFile(context, ".pdf");
 
         switch (source.kind) {
@@ -106,7 +110,7 @@ public final class DocumentPreparer {
             }
 
             case IMAGES: {
-                ImageToPdf.convert(context, source.uris, geometry, false, destination);
+                ImageToPdf.convert(context, source.uris, geometry, false, grayscale, destination);
                 return destination;
             }
 

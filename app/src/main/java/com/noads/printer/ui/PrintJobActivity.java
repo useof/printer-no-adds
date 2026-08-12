@@ -104,6 +104,9 @@ public class PrintJobActivity extends AppCompatActivity {
     /** Same, for the page orientation. */
     private int renderedForOrientation;
 
+    /** Same, pentru alb-negru: o poză color trebuie re-randată dacă se comută. */
+    private boolean renderedForGrayscale;
+
     private ViewGroup root;
     private ViewGroup webContainer;
     private ImageView previewImage;
@@ -240,7 +243,8 @@ public class PrintJobActivity extends AppCompatActivity {
 
                 String state = loaded.describeState();
                 String supplies = loaded.describeSupplies();
-                printerStateView.setText(supplies.isEmpty() ? state : state + "\n" + supplies);
+                String details = supplies.isEmpty() ? state : state + "\n" + supplies;
+                printerStateView.setText(details + "\n" + loaded.describeFormats());
                 populateOptions(loaded);
 
                 if (!loaded.acceptingJobs) {
@@ -355,6 +359,7 @@ public class PrintJobActivity extends AppCompatActivity {
                 };
         mediaSpinner.setOnItemSelectedListener(listener);
         orientationSpinner.setOnItemSelectedListener(listener);
+        colorSpinner.setOnItemSelectedListener(listener);
     }
 
     private void onRenderOptionChanged() {
@@ -366,10 +371,21 @@ public class PrintJobActivity extends AppCompatActivity {
         if (media == null) {
             return;
         }
-        if (media.equals(renderedForMedia) && selectedOrientation() == renderedForOrientation) {
+        if (media.equals(renderedForMedia)
+                && selectedOrientation() == renderedForOrientation
+                && isMonochromeSelected() == renderedForGrayscale) {
             return;
         }
         prepareDocument();
+    }
+
+    /**
+     * Alb-negru cerut explicit sau singura variantă a imprimantei. Xerox 3025 e
+     * monocromă, deci pentru ea răspunsul e mereu da.
+     */
+    private boolean isMonochromeSelected() {
+        return JobOptions.COLOR_MONOCHROME.equals(
+                selected(colorValues, colorSpinner, JobOptions.COLOR_AUTO));
     }
 
     private int selectedOrientation() {
@@ -409,11 +425,13 @@ public class PrintJobActivity extends AppCompatActivity {
 
         renderedForMedia = selectedMedia();
         renderedForOrientation = selectedOrientation();
+        renderedForGrayscale = isMonochromeSelected();
         PageGeometry geometry = PageGeometry.forMedia(renderedForMedia);
         geometry = renderedForOrientation == JobOptions.ORIENTATION_LANDSCAPE
                 ? geometry.landscape()
                 : geometry.portrait();
-        preparer.prepare(source, geometry, webContainer, new DocumentPreparer.Callback() {
+        preparer.prepare(source, geometry, renderedForGrayscale, webContainer,
+                new DocumentPreparer.Callback() {
             @Override
             public void onPrepared(@NonNull File pdf) {
                 preparedPdf = pdf;
