@@ -80,12 +80,12 @@ public final class ImageToPdf {
     }
 
     /**
-     * Desenează poza centrată pe pagină, cât de mare încape.
+     * Desenează poza centrată pe pagină, cât de mare încape, în orientarea ei
+     * originală.
      *
-     * <p>Dacă forma pozei nu se potrivește cu a paginii (poză lată pe pagină
-     * portret sau invers), poza e rotită cu 90°. Altfel ar rămâne o bandă
-     * îngustă în mijlocul foii: pe A4 portret, o poză 3:2 lată ajunge la mai
-     * puțin de jumătate din suprafața pe care o ocupă rotită.
+     * <p>Poza nu se rotește niciodată: orientarea o dă hârtia, aleasă de
+     * utilizator. O poză lată pe o pagină portret rămâne lată, cu spațiu gol
+     * deasupra și dedesubt — pentru a o vedea mare, orientarea de ales e peisaj.
      */
     private static void drawCentered(Canvas canvas,
                                      Bitmap bitmap,
@@ -95,32 +95,19 @@ public final class ImageToPdf {
                 ? new Rect(0, 0, geometry.width, geometry.height)
                 : geometry.contentRect();
 
-        boolean rotate = (bitmap.getWidth() > bitmap.getHeight())
-                != (target.width() > target.height());
-
-        // Cu poza rotită, lățimea ei se măsoară pe înălțimea paginii.
-        float availableWidth = rotate ? target.height() : target.width();
-        float availableHeight = rotate ? target.width() : target.height();
-
         float scale = Math.min(
-                availableWidth / bitmap.getWidth(),
-                availableHeight / bitmap.getHeight());
+                (float) target.width() / bitmap.getWidth(),
+                (float) target.height() / bitmap.getHeight());
 
         float drawWidth = bitmap.getWidth() * scale;
         float drawHeight = bitmap.getHeight() * scale;
+        float left = target.left + (target.width() - drawWidth) / 2f;
+        float top = target.top + (target.height() - drawHeight) / 2f;
 
         Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
         paint.setColor(Color.BLACK);
-
-        canvas.save();
-        canvas.translate(target.exactCenterX(), target.exactCenterY());
-        if (rotate) {
-            canvas.rotate(90);
-        }
         canvas.drawBitmap(bitmap, null,
-                new RectF(-drawWidth / 2f, -drawHeight / 2f, drawWidth / 2f, drawHeight / 2f),
-                paint);
-        canvas.restore();
+                new RectF(left, top, left + drawWidth, top + drawHeight), paint);
     }
 
     /**
