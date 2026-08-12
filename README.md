@@ -12,7 +12,7 @@ tot ce face aplicația se întâmplă între telefon și imprimanta din rețeaua
 | PDF | trimis ca atare, după verificarea antetului `%PDF-` |
 | Imagini (JPEG/PNG/WebP/HEIF) | randate într-un PDF, o imagine pe pagină, cu rotația EXIF aplicată |
 | Text (`text/*`, JSON, XML) | paginat cu `StaticLayout`, cu antet și număr de pagină |
-| Pagini web | randate cu `WebView.createPrintDocumentAdapter()` |
+| Pagini web | încărcate într-un `WebView` off-screen și desenate în PDF, felie cu felie |
 
 Documentele intră în aplicație fie din ecranul principal, fie prin **Share** din
 altă aplicație (`ACTION_SEND`), fie prin deschiderea unui PDF (`ACTION_VIEW`).

@@ -2,11 +2,9 @@ package com.noads.printer.render;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.os.CancellationSignal;
-import android.os.ParcelFileDescriptor;
-import android.print.PageRange;
-import android.print.PrintAttributes;
-import android.print.PrintDocumentAdapter;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.pdf.PdfDocument;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,18 +16,30 @@ import android.webkit.WebViewClient;
 
 import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
 /**
- * Renders a web page to PDF by driving the {@link PrintDocumentAdapter} that
- * {@link WebView#createPrintDocumentAdapter(String)} hands back.
+ * Renders a web page to PDF by loading it in an off-screen {@link WebView} and
+ * drawing the laid-out view into a {@link PdfDocument}, one page-height slice at
+ * a time.
  *
- * <p>The WebView must live in the view hierarchy and have a non-zero size or it
- * lays out to nothing and the PDF comes out blank, so the caller supplies a
- * container to attach an off-screen instance to.
+ * <p>The obvious route — {@link WebView#createPrintDocumentAdapter(String)} —
+ * cannot be driven from application code: {@code PrintDocumentAdapter}'s
+ * {@code LayoutResultCallback} and {@code WriteResultCallback} have
+ * package-private constructors, so they can only be subclassed from inside
+ * {@code android.print}. Declaring our own class in that package is the usual
+ * workaround, and it relies on the runtime not enforcing the access check —
+ * not something to build a printing path on. Drawing the view ourselves uses
+ * only public API. The trade-off is raster output rather than selectable text,
+ * which for printing changes nothing.
+ *
+ * <p>The WebView must be attached and have a non-zero size or it lays out to
+ * nothing and the PDF comes out blank, so the caller supplies a container to
+ * attach an off-screen instance to.
  *
  * <p>Everything here runs on the main thread; the result arrives on the
  * callback, also on the main thread.
@@ -40,6 +50,8 @@ public final class WebToPdf {
     private static final long LOAD_TIMEOUT_MS = 45_000;
     /** Give layout and web fonts a beat to settle after onPageFinished. */
     private static final long SETTLE_DELAY_MS = 700;
+    /** A runaway page (infinite scroll, broken layout) must not print forever. */
+    private static final int MAX_PAGES = 200;
 
     public interface Callback {
         void onSuccess(@NonNull File pdf);
@@ -61,6 +73,9 @@ public final class WebToPdf {
         WebView webView = new WebView(context);
         // Off-screen but measurable: a zero-size or GONE WebView renders nothing.
         webView.setVisibility(View.INVISIBLE);
+        // draw() targets the PdfDocument's software canvas; a hardware layer can
+        // come out blank there.
+        webView.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
         container.addView(webView, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
@@ -142,75 +157,81 @@ public final class WebToPdf {
             writing = true;
             webView.removeCallbacks(timeoutRunnable);
 
-            PrintAttributes attributes = new PrintAttributes.Builder()
-                    .setMediaSize(mediaSizeFor(geometry))
-                    .setResolution(new PrintAttributes.Resolution("pdf", "pdf", 300, 300))
-                    .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
-                    .build();
-
-            PrintDocumentAdapter adapter =
-                    webView.createPrintDocumentAdapter(destination.getName());
-            CancellationSignal cancellation = new CancellationSignal();
-
-            adapter.onLayout(attributes, attributes, cancellation,
-                    new PrintDocumentAdapter.LayoutResultCallback() {
-                        @Override
-                        public void onLayoutFinished(android.print.PrintDocumentInfo info,
-                                                     boolean changed) {
-                            performWrite(adapter, cancellation);
-                        }
-
-                        @Override
-                        public void onLayoutFailed(CharSequence error) {
-                            fail(new IOException("Page layout failed: " + error));
-                        }
-
-                        @Override
-                        public void onLayoutCancelled() {
-                            fail(new IOException("Page layout was cancelled"));
-                        }
-                    }, null);
-        }
-
-        private void performWrite(PrintDocumentAdapter adapter, CancellationSignal cancellation) {
-            ParcelFileDescriptor descriptor;
             try {
-                descriptor = ParcelFileDescriptor.open(destination,
-                        ParcelFileDescriptor.MODE_CREATE
-                                | ParcelFileDescriptor.MODE_TRUNCATE
-                                | ParcelFileDescriptor.MODE_READ_WRITE);
-            } catch (IOException e) {
-                fail(e);
+                render();
+            } catch (IOException | RuntimeException e) {
+                fail(e instanceof IOException ? (IOException) e : new IOException(e));
                 return;
             }
+            succeed();
+        }
 
-            adapter.onWrite(new PageRange[]{PageRange.ALL_PAGES}, descriptor, cancellation,
-                    new PrintDocumentAdapter.WriteResultCallback() {
-                        @Override
-                        public void onWriteFinished(PageRange[] pages) {
-                            closeQuietly(descriptor);
-                            adapter.onFinish();
-                            if (destination.length() == 0) {
-                                fail(new IOException("The page produced an empty document"));
-                            } else {
-                                succeed();
-                            }
-                        }
+        /**
+         * Lays the WebView out at its full content height, then draws it into the
+         * PDF page by page. The view is scaled so its width fills the printable
+         * width of the page; each page shows the next slice of the same drawing.
+         */
+        private void render() throws IOException {
+            int viewWidth = webView.getWidth();
+            if (viewWidth <= 0) {
+                throw new IOException("The page had no width to render into");
+            }
 
-                        @Override
-                        public void onWriteFailed(CharSequence error) {
-                            closeQuietly(descriptor);
-                            adapter.onFinish();
-                            fail(new IOException("Could not write the PDF: " + error));
-                        }
+            // getContentHeight() is in CSS pixels; getScale() converts to view pixels.
+            int contentHeight = Math.round(webView.getContentHeight() * webView.getScale());
+            if (contentHeight <= 0) {
+                contentHeight = webView.getHeight();
+            }
+            if (contentHeight <= 0) {
+                throw new IOException("The page produced an empty document");
+            }
 
-                        @Override
-                        public void onWriteCancelled() {
-                            closeQuietly(descriptor);
-                            adapter.onFinish();
-                            fail(new IOException("Writing the PDF was cancelled"));
-                        }
-                    });
+            // Lay the view out over its whole content so draw() emits all of it,
+            // not just the visible viewport.
+            webView.measure(
+                    View.MeasureSpec.makeMeasureSpec(viewWidth, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(contentHeight, View.MeasureSpec.EXACTLY));
+            webView.layout(0, 0, viewWidth, contentHeight);
+
+            float scale = (float) geometry.contentWidth() / viewWidth;
+            // How much of the view fits on one page, in view pixels.
+            float sliceHeight = geometry.contentHeight() / scale;
+            int pageCount = Math.min(
+                    (int) Math.ceil(contentHeight / sliceHeight), MAX_PAGES);
+            if (pageCount * sliceHeight < contentHeight) {
+                Log.w(TAG, "Page truncated at " + MAX_PAGES + " pages");
+            }
+
+            PdfDocument document = new PdfDocument();
+            try {
+                for (int i = 0; i < pageCount; i++) {
+                    PdfDocument.PageInfo info = new PdfDocument.PageInfo.Builder(
+                            geometry.width, geometry.height, i + 1).create();
+                    PdfDocument.Page page = document.startPage(info);
+                    Canvas canvas = page.getCanvas();
+                    canvas.drawColor(Color.WHITE);
+
+                    canvas.save();
+                    canvas.translate(geometry.margin, geometry.margin);
+                    canvas.clipRect(0, 0, geometry.contentWidth(), geometry.contentHeight());
+                    canvas.scale(scale, scale);
+                    canvas.translate(0, -i * sliceHeight);
+                    webView.draw(canvas);
+                    canvas.restore();
+
+                    document.finishPage(page);
+                }
+
+                try (OutputStream out = new FileOutputStream(destination)) {
+                    document.writeTo(out);
+                }
+            } finally {
+                document.close();
+            }
+
+            if (destination.length() == 0) {
+                throw new IOException("The page produced an empty document");
+            }
         }
 
         void succeed() {
@@ -237,33 +258,6 @@ public final class WebToPdf {
             webView.setWebViewClient(new WebViewClient());
             container.removeView(webView);
             webView.destroy();
-        }
-    }
-
-    private static PrintAttributes.MediaSize mediaSizeFor(PageGeometry geometry) {
-        if (geometry.width == PageGeometry.LETTER_WIDTH
-                && geometry.height == PageGeometry.LETTER_HEIGHT) {
-            return PrintAttributes.MediaSize.NA_LETTER;
-        }
-        if (geometry.width == PageGeometry.LEGAL_WIDTH
-                && geometry.height == PageGeometry.LEGAL_HEIGHT) {
-            return PrintAttributes.MediaSize.NA_LEGAL;
-        }
-        if (geometry.width == PageGeometry.A5_WIDTH
-                && geometry.height == PageGeometry.A5_HEIGHT) {
-            return PrintAttributes.MediaSize.ISO_A5;
-        }
-        return PrintAttributes.MediaSize.ISO_A4;
-    }
-
-    private static void closeQuietly(@Nullable ParcelFileDescriptor descriptor) {
-        if (descriptor == null) {
-            return;
-        }
-        try {
-            descriptor.close();
-        } catch (IOException e) {
-            Log.w(TAG, "Could not close the PDF descriptor", e);
         }
     }
 }
