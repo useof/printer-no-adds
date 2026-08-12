@@ -39,5 +39,5 @@ RUN --mount=type=cache,target=/root/.gradle \
 # ---- Imaginea finală: nginx cu APK-ul + pagina de download ----------------
 FROM nginx:1.27-alpine AS runtime
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY web/index.html /usr/share/nginx/html/index.html
+COPY web/ /usr/share/nginx/html/
 COPY --from=apk /a.apk /usr/share/nginx/html/a.apk
