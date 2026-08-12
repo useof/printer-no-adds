@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
 
-    <style name="Theme.PrinterNoAds" parent="Theme.Material3.DayNight">
+    <!-- NoActionBar, nu DayNight simplu: fiecare ecran își pune propriul
+         MaterialToolbar prin setSupportActionBar(), iar o temă cu action bar din
+         window decor face apelul ăla să arunce IllegalStateException în onCreate,
+         adică aplicația moare la lansare. -->
+    <style name="Theme.PrinterNoAds" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/primary</item>
         <item name="colorOnPrimary">@color/on_primary</item>
         <item name="colorSurface">@color/surface</item>
