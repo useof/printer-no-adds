@@ -101,6 +101,9 @@ public class PrintJobActivity extends AppCompatActivity {
     @Nullable
     private String renderedForMedia;
 
+    /** Same, for the page orientation. */
+    private int renderedForOrientation;
+
     private ViewGroup root;
     private ViewGroup webContainer;
     private ImageView previewImage;
@@ -117,6 +120,7 @@ public class PrintJobActivity extends AppCompatActivity {
     private EditText copiesInput;
     private EditText pageRangeInput;
     private Spinner mediaSpinner;
+    private Spinner orientationSpinner;
     private Spinner sidesSpinner;
     private Spinner colorSpinner;
     private Spinner qualitySpinner;
@@ -125,6 +129,9 @@ public class PrintJobActivity extends AppCompatActivity {
     private MaterialButton printButton;
     private ProgressBar uploadProgress;
     private TextView statusView;
+
+    private final List<Integer> orientationValues = Arrays.asList(
+            JobOptions.ORIENTATION_PORTRAIT, JobOptions.ORIENTATION_LANDSCAPE);
 
     private List<String> mediaValues = new ArrayList<>();
     private List<String> sidesValues = new ArrayList<>();
@@ -168,6 +175,11 @@ public class PrintJobActivity extends AppCompatActivity {
         }
         toolbar.setNavigationOnClickListener(v -> finish());
 
+        // Fereastra e edge-to-edge (targetSdk 35): fără asta bara de sus intră sub
+        // bara de stare, iar butonul de print sub butoanele de navigație.
+        SystemBars.padTop(toolbar);
+        SystemBars.padBottom(findViewById(R.id.action_bar_container));
+
         root = findViewById(R.id.root);
         webContainer = findViewById(R.id.web_render_container);
         previewImage = findViewById(R.id.preview_image);
@@ -184,6 +196,7 @@ public class PrintJobActivity extends AppCompatActivity {
         copiesInput = findViewById(R.id.input_copies);
         pageRangeInput = findViewById(R.id.input_page_range);
         mediaSpinner = findViewById(R.id.spinner_media);
+        orientationSpinner = findViewById(R.id.spinner_orientation);
         sidesSpinner = findViewById(R.id.spinner_sides);
         colorSpinner = findViewById(R.id.spinner_color);
         qualitySpinner = findViewById(R.id.spinner_quality);
@@ -269,6 +282,14 @@ public class PrintJobActivity extends AppCompatActivity {
         setSpinner(mediaSpinner, mediaLabels,
                 indexOf(mediaValues, caps == null ? null : caps.defaultMedia));
 
+        // Ambele orientări sunt oferite mereu: pentru documentele generate aici
+        // orientarea e aplicată la randare, deci nu depinde de ce raportează
+        // imprimanta.
+        setSpinner(orientationSpinner,
+                Arrays.asList(getString(R.string.orientation_portrait),
+                        getString(R.string.orientation_landscape)),
+                0);
+
         sidesValues = new ArrayList<>();
         List<String> sidesLabels = new ArrayList<>();
         List<String> supportedSides = caps != null && !caps.sides.isEmpty()
@@ -310,33 +331,52 @@ public class PrintJobActivity extends AppCompatActivity {
         int normalIndex = Math.max(0, qualityValues.indexOf(JobOptions.QUALITY_NORMAL));
         setSpinner(qualitySpinner, qualityLabels, normalIndex);
 
-        watchMediaChanges();
+        watchRenderOptions();
     }
 
     /**
-     * Images, text, and web pages are rendered at a specific page size, so
-     * changing the paper means the PDF has to be built again. A PDF chosen by
-     * the user is sent as-is and is left alone.
+     * Images, text, and web pages are rendered at a specific page size and
+     * orientation, so changing either means the PDF has to be built again. A PDF
+     * chosen by the user is sent as-is and is left alone — for it, the
+     * orientation only travels as {@code orientation-requested}.
      */
-    private void watchMediaChanges() {
-        mediaSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                String media = selectedMedia();
-                if (media == null || media.equals(renderedForMedia)) {
-                    return;
-                }
-                if (renderedForMedia == null || source.kind == PrintSource.Kind.PDF) {
-                    // Nothing rendered yet, or nothing to re-render.
-                    return;
-                }
-                prepareDocument();
-            }
+    private void watchRenderOptions() {
+        AdapterView.OnItemSelectedListener listener =
+                new AdapterView.OnItemSelectedListener() {
+                    @Override
+                    public void onItemSelected(AdapterView<?> parent, View view,
+                                               int position, long id) {
+                        onRenderOptionChanged();
+                    }
 
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-            }
-        });
+                    @Override
+                    public void onNothingSelected(AdapterView<?> parent) {
+                    }
+                };
+        mediaSpinner.setOnItemSelectedListener(listener);
+        orientationSpinner.setOnItemSelectedListener(listener);
+    }
+
+    private void onRenderOptionChanged() {
+        if (renderedForMedia == null || source.kind == PrintSource.Kind.PDF) {
+            // Nothing rendered yet, or nothing to re-render.
+            return;
+        }
+        String media = selectedMedia();
+        if (media == null) {
+            return;
+        }
+        if (media.equals(renderedForMedia) && selectedOrientation() == renderedForOrientation) {
+            return;
+        }
+        prepareDocument();
+    }
+
+    private int selectedOrientation() {
+        int position = orientationSpinner.getSelectedItemPosition();
+        return position >= 0 && position < orientationValues.size()
+                ? orientationValues.get(position)
+                : JobOptions.ORIENTATION_PORTRAIT;
     }
 
     private void setSpinner(Spinner spinner, List<String> labels, int selectedIndex) {
@@ -368,7 +408,11 @@ public class PrintJobActivity extends AppCompatActivity {
         setStatus(getString(R.string.preparing_document), false);
 
         renderedForMedia = selectedMedia();
+        renderedForOrientation = selectedOrientation();
         PageGeometry geometry = PageGeometry.forMedia(renderedForMedia);
+        geometry = renderedForOrientation == JobOptions.ORIENTATION_LANDSCAPE
+                ? geometry.landscape()
+                : geometry.portrait();
         preparer.prepare(source, geometry, webContainer, new DocumentPreparer.Callback() {
             @Override
             public void onPrepared(@NonNull File pdf) {
@@ -518,6 +562,8 @@ public class PrintJobActivity extends AppCompatActivity {
         options.media = selectedMedia();
         options.sides = selected(sidesValues, sidesSpinner, JobOptions.SIDES_ONE_SIDED);
         options.colorMode = selected(colorValues, colorSpinner, JobOptions.COLOR_AUTO);
+
+        options.orientation = selectedOrientation();
 
         int qualityIndex = qualitySpinner.getSelectedItemPosition();
         options.quality = qualityIndex >= 0 && qualityIndex < qualityValues.size()

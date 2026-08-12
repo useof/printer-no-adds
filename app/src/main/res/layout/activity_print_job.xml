@@ -243,6 +243,14 @@
 
                 <TextView
                     style="@style/Widget.PrinterNoAds.OptionLabel"
+                    android:text="@string/label_orientation" />
+
+                <Spinner
+                    android:id="@+id/spinner_orientation"
+                    style="@style/Widget.PrinterNoAds.OptionSpinner" />
+
+                <TextView
+                    style="@style/Widget.PrinterNoAds.OptionLabel"
                     android:text="@string/label_sides" />
 
                 <Spinner
@@ -276,7 +284,11 @@
         </LinearLayout>
     </ScrollView>
 
+    <!-- Bara de acțiune. Padding-ul de jos e completat în cod cu înălțimea barei
+         de navigație: cu targetSdk 35 fereastra e edge-to-edge, deci butonul ar
+         sta altfel sub butoanele de sistem. -->
     <LinearLayout
+        android:id="@+id/action_bar_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="?attr/colorSurface"

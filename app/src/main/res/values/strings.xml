@@ -50,6 +50,9 @@
     <string name="label_pages">Pages</string>
     <string name="pages_helper">All pages, or e.g. 1-3, 5</string>
     <string name="label_paper">Paper size</string>
+    <string name="label_orientation">Orientation</string>
+    <string name="orientation_portrait">Portrait</string>
+    <string name="orientation_landscape">Landscape</string>
     <string name="label_sides">Sides</string>
     <string name="label_color">Colour</string>
     <string name="label_quality">Quality</string>

@@ -177,6 +177,9 @@ public final class IppClient {
         if (options.quality > 0) {
             request.attr(Ipp.TAG_ENUM, "print-quality", options.quality);
         }
+        if (options.orientation > 0) {
+            request.attr(Ipp.TAG_ENUM, "orientation-requested", options.orientation);
+        }
         if (options.media != null) {
             request.attr(Ipp.TAG_KEYWORD, "media", options.media);
         }

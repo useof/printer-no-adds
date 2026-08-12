@@ -23,6 +23,9 @@ altă aplicație (`ACTION_SEND`), fie prin deschiderea unui PDF (`ACTION_VIEW`).
 - Adăugare manuală după IP/host (pentru rețele fără mDNS), cu buton de test
 - Preview paginat al PDF-ului final (`PdfRenderer`), cu navigare între pagini
 - Opțiuni citite din imprimantă: format hârtie, față/verso, color, calitate, copii
+- Orientare portret/peisaj: documentele generate sunt randate în orientarea aleasă,
+  iar jobul trimite și `orientation-requested` (singurul efect pentru PDF-urile
+  trimise ca atare)
 - Interval de pagini (`1-3, 5`), trimis ca `page-ranges` (rangeOfInteger)
 - Nivel de toner/cerneală din atributele `marker-*`
 - Progres la upload, urmărirea stării jobului și **anulare** (`Cancel-Job`)

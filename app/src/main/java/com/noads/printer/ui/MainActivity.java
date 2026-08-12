@@ -73,6 +73,11 @@ public class MainActivity extends AppCompatActivity implements PrinterAdapter.Li
         list.setLayoutManager(new LinearLayoutManager(this));
         list.setAdapter(adapter);
 
+        // Fereastră edge-to-edge: ultima imprimantă din listă ar sta altfel sub
+        // butoanele de navigație. Bara de sus e acoperită de fitsSystemWindows
+        // pe AppBarLayout.
+        SystemBars.padBottom(list);
+
         swipeRefresh = findViewById(R.id.swipe_refresh);
         swipeRefresh.setOnRefreshListener(this::rescan);
 

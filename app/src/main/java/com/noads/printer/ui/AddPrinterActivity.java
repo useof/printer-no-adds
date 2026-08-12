@@ -54,6 +54,10 @@ public class AddPrinterActivity extends AppCompatActivity {
         }
         toolbar.setNavigationOnClickListener(v -> finish());
 
+        // Fereastră edge-to-edge: vezi SystemBars.
+        SystemBars.padTop(toolbar);
+        SystemBars.padBottom(findViewById(R.id.content_scroll));
+
         jobManager = PrinterApp.from(this).jobs();
 
         hostInput = findViewById(R.id.input_host);

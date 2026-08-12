@@ -13,6 +13,10 @@ public final class JobOptions {
     public static final String COLOR_COLOR = "color";
     public static final String COLOR_MONOCHROME = "monochrome";
 
+    /** {@code orientation-requested} enum values from RFC 8011. */
+    public static final int ORIENTATION_PORTRAIT = 3;
+    public static final int ORIENTATION_LANDSCAPE = 4;
+
     public static final int QUALITY_DRAFT = 3;
     public static final int QUALITY_NORMAL = 4;
     public static final int QUALITY_HIGH = 5;
@@ -22,6 +26,13 @@ public final class JobOptions {
     public String sides = SIDES_ONE_SIDED;
     public String colorMode = COLOR_AUTO;
     public int quality = QUALITY_NORMAL;
+
+    /**
+     * Trimis ca {@code orientation-requested}. Pentru documentele generate de
+     * aplicație (imagini, text, pagini web) orientarea e deja aplicată la
+     * randare — atributul rămâne util pentru PDF-urile trimise ca atare.
+     */
+    public int orientation = ORIENTATION_PORTRAIT;
 
     /** PWG media name, e.g. {@code iso_a4_210x297mm}. Null leaves it to the printer. */
     @Nullable
