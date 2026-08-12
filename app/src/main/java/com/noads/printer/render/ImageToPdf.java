@@ -8,13 +8,12 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.graphics.RectF;
-import android.graphics.pdf.PdfDocument;
 import android.net.Uri;
 
 import androidx.annotation.NonNull;
 import androidx.exifinterface.media.ExifInterface;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -27,10 +26,18 @@ public final class ImageToPdf {
 
     /**
      * Cap on the decoded pixel count. 300 dpi across a full A4 page is roughly
-     * 8.7 megapixels, so 12 MP keeps quality headroom while stopping a 108 MP
-     * phone photo from taking the app out of memory.
+     * 8.7 megapixels — dincolo de atât nu se mai câștigă nimic la tipar, doar
+     * memorie consumată de o poză de 108 MP și octeți în plus în JPEG.
      */
-    private static final int MAX_PIXELS = 12_000_000;
+    private static final int MAX_PIXELS = 9_000_000;
+
+    /**
+     * Calitatea JPEG a imaginii înglobate. 90 e vizual indistinct de original la
+     * tipar și ține o poză de telefon pe A4 sub 2 MB — necomprimată, aceeași poză
+     * dădea un PDF de peste 20 MB, pe care imprimanta îl accepta și apoi îl lăsa
+     * blocat în „processing", fără să scoată hârtia.
+     */
+    private static final int JPEG_QUALITY = 90;
 
     private ImageToPdf() {
     }
@@ -50,47 +57,27 @@ public final class ImageToPdf {
             throw new IOException("No images to print");
         }
 
-        PdfDocument document = new PdfDocument();
-        try {
-            int pageNumber = 1;
+        try (OutputStream out = new FileOutputStream(destination);
+             JpegPdfWriter writer = new JpegPdfWriter(out)) {
             for (Uri image : images) {
                 Bitmap bitmap = decode(context, image, geometry);
                 if (bitmap == null) {
                     throw new IOException("Cannot decode image: " + image);
                 }
                 try {
-                    // Pagina păstrează orientarea cerută de utilizator; poza e
-                    // rotită dacă e nevoie (vezi drawCentered).
-                    PdfDocument.PageInfo info = new PdfDocument.PageInfo.Builder(
-                            geometry.width, geometry.height, pageNumber++).create();
-                    PdfDocument.Page page = document.startPage(info);
-                    drawCentered(page.getCanvas(), bitmap, geometry, fitToPage);
-                    document.finishPage(page);
+                    addPage(writer, bitmap, geometry, fitToPage);
                 } finally {
                     bitmap.recycle();
                 }
             }
-
-            try (OutputStream out = new FileOutputStream(destination)) {
-                document.writeTo(out);
-            }
-        } finally {
-            document.close();
         }
     }
 
-    /**
-     * Desenează poza centrată pe pagină, cât de mare încape, în orientarea ei
-     * originală.
-     *
-     * <p>Poza nu se rotește niciodată: orientarea o dă hârtia, aleasă de
-     * utilizator. O poză lată pe o pagină portret rămâne lată, cu spațiu gol
-     * deasupra și dedesubt — pentru a o vedea mare, orientarea de ales e peisaj.
-     */
-    private static void drawCentered(Canvas canvas,
-                                     Bitmap bitmap,
-                                     PageGeometry geometry,
-                                     boolean fitToPage) {
+    /** Așază poza pe pagină, centrată, cât de mare încape, fără să o rotească. */
+    private static void addPage(JpegPdfWriter writer,
+                                Bitmap bitmap,
+                                PageGeometry geometry,
+                                boolean fitToPage) throws IOException {
         Rect target = fitToPage
                 ? new Rect(0, 0, geometry.width, geometry.height)
                 : geometry.contentRect();
@@ -98,16 +85,45 @@ public final class ImageToPdf {
         float scale = Math.min(
                 (float) target.width() / bitmap.getWidth(),
                 (float) target.height() / bitmap.getHeight());
-
         float drawWidth = bitmap.getWidth() * scale;
         float drawHeight = bitmap.getHeight() * scale;
         float left = target.left + (target.width() - drawWidth) / 2f;
         float top = target.top + (target.height() - drawHeight) / 2f;
+        // PDF numără de jos în sus, spre deosebire de Rect.
+        float bottom = geometry.height - (top + drawHeight);
 
-        Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
-        paint.setColor(Color.BLACK);
-        canvas.drawBitmap(bitmap, null,
-                new RectF(left, top, left + drawWidth, top + drawHeight), paint);
+        byte[] jpeg = toJpeg(bitmap);
+        writer.addPage(geometry.width, geometry.height,
+                jpeg, bitmap.getWidth(), bitmap.getHeight(),
+                left, bottom, drawWidth, drawHeight);
+    }
+
+    /**
+     * Comprimă poza ca JPEG. Transparența se aplatizează peste alb: JPEG nu are
+     * canal alfa, iar fără asta zonele transparente ale unui PNG ies negre.
+     */
+    private static byte[] toJpeg(Bitmap bitmap) throws IOException {
+        Bitmap opaque = bitmap;
+        boolean recycleOpaque = false;
+        if (bitmap.hasAlpha()) {
+            opaque = Bitmap.createBitmap(
+                    bitmap.getWidth(), bitmap.getHeight(), Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(opaque);
+            canvas.drawColor(Color.WHITE);
+            canvas.drawBitmap(bitmap, 0, 0, new Paint(Paint.FILTER_BITMAP_FLAG));
+            recycleOpaque = true;
+        }
+        try {
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            if (!opaque.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, buffer)) {
+                throw new IOException("Could not compress the image");
+            }
+            return buffer.toByteArray();
+        } finally {
+            if (recycleOpaque) {
+                opaque.recycle();
+            }
+        }
     }
 
     /**
