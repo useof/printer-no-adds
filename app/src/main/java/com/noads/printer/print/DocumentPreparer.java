@@ -10,6 +10,7 @@ import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.noads.printer.raster.PdfToRaster;
 import com.noads.printer.render.ImageToPdf;
 import com.noads.printer.render.PageGeometry;
 import com.noads.printer.render.TextToPdf;
@@ -89,6 +90,30 @@ public final class DocumentPreparer {
             try {
                 File pdf = convertBlocking(source, geometry, grayscale);
                 mainHandler.post(() -> callback.onPrepared(pdf));
+            } catch (Exception e) {
+                mainHandler.post(() -> callback.onFailed(e));
+            }
+        });
+    }
+
+    /**
+     * Rasterizează PDF-ul pregătit, pentru imprimantele fără interpretor de PDF.
+     * Rulează pe același executor ca pregătirea documentului, deci nu blochează
+     * interfața.
+     */
+    @MainThread
+    public void rasterize(@NonNull File pdf,
+                          @NonNull String format,
+                          int dpi,
+                          boolean grayscale,
+                          @Nullable String mediaName,
+                          @NonNull Callback callback) {
+        executor.execute(() -> {
+            try {
+                File raster = PdfToRaster.convert(pdf,
+                        DocumentUtils.newJobFile(context, ".raster"),
+                        format, dpi, grayscale, mediaName);
+                mainHandler.post(() -> callback.onPrepared(raster));
             } catch (Exception e) {
                 mainHandler.post(() -> callback.onFailed(e));
             }

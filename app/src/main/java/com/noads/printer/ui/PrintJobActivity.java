@@ -34,6 +34,7 @@ import com.noads.printer.model.PrinterRepository;
 import com.noads.printer.print.DocumentPreparer;
 import com.noads.printer.print.PrintJobManager;
 import com.noads.printer.print.PrintSource;
+import com.noads.printer.raster.PdfToRaster;
 import com.noads.printer.render.PageGeometry;
 import com.noads.printer.util.DocumentUtils;
 import com.noads.printer.util.MediaNames;
@@ -127,11 +128,25 @@ public class PrintJobActivity extends AppCompatActivity {
     private Spinner sidesSpinner;
     private Spinner colorSpinner;
     private Spinner qualitySpinner;
+    private Spinner formatSpinner;
 
     private View optionsPanel;
     private MaterialButton printButton;
     private ProgressBar uploadProgress;
     private TextView statusView;
+
+    /**
+     * Rezoluția rasterului. 300 dpi e ce trimite și AirPrint: sub asta textul
+     * mic se strică, peste, volumul crește fără câștig la o laser obișnuită.
+     */
+    private static final int RASTER_DPI = 300;
+
+    /** Primul e null: „automat", adică ce declară imprimanta. */
+    private final List<String> formatValues = Arrays.asList(
+            null,
+            PrinterCapabilities.FORMAT_PDF,
+            PrinterCapabilities.FORMAT_URF,
+            PrinterCapabilities.FORMAT_PWG_RASTER);
 
     private final List<Integer> orientationValues = Arrays.asList(
             JobOptions.ORIENTATION_PORTRAIT, JobOptions.ORIENTATION_LANDSCAPE);
@@ -203,6 +218,7 @@ public class PrintJobActivity extends AppCompatActivity {
         sidesSpinner = findViewById(R.id.spinner_sides);
         colorSpinner = findViewById(R.id.spinner_color);
         qualitySpinner = findViewById(R.id.spinner_quality);
+        formatSpinner = findViewById(R.id.spinner_format);
 
         optionsPanel = findViewById(R.id.options_panel);
         printButton = findViewById(R.id.button_print);
@@ -257,7 +273,8 @@ public class PrintJobActivity extends AppCompatActivity {
             public void onFailed(@NonNull Exception error) {
                 // The printer may simply not answer Get-Printer-Attributes.
                 // Fall back to sane defaults rather than blocking the user.
-                printerStateView.setText(getString(R.string.printer_unreachable_short));
+                printerStateView.setText(getString(R.string.printer_unreachable_short)
+                        + "\nformate: necunoscute (imprimanta nu a răspuns)");
                 setStatus(getString(R.string.capabilities_failed,
                         AddPrinterActivity.describe(error)), true);
                 populateOptions(null);
@@ -334,6 +351,12 @@ public class PrintJobActivity extends AppCompatActivity {
         }
         int normalIndex = Math.max(0, qualityValues.indexOf(JobOptions.QUALITY_NORMAL));
         setSpinner(qualitySpinner, qualityLabels, normalIndex);
+
+        setSpinner(formatSpinner, Arrays.asList(
+                getString(R.string.format_auto),
+                getString(R.string.format_pdf),
+                getString(R.string.format_urf),
+                getString(R.string.format_pwg)), 0);
 
         watchRenderOptions();
     }
@@ -526,9 +549,7 @@ public class PrintJobActivity extends AppCompatActivity {
             return;
         }
 
-        String format = capabilities != null
-                ? capabilities.chooseFormatForPdf()
-                : PrinterCapabilities.FORMAT_PDF;
+        String format = resolveFormat();
         if (format == null) {
             new MaterialAlertDialogBuilder(this)
                     .setTitle(R.string.unsupported_printer_title)
@@ -542,7 +563,54 @@ public class PrintJobActivity extends AppCompatActivity {
         uploadProgress.setVisibility(View.VISIBLE);
         uploadProgress.setIndeterminate(true);
 
-        submission = jobManager.submit(printer, preparedPdf, format, options, new JobListener());
+        if (PdfToRaster.isRasterFormat(format)) {
+            // Imprimanta nu are interpretor de PDF: îi trimitem pixeli. Randarea
+            // durează, deci se face pe alt fir, cu jobul marcat deja pornit.
+            setStatus(getString(R.string.stage_rasterising), false);
+            preparer.rasterize(preparedPdf, format, RASTER_DPI, isMonochromeSelected(),
+                    selectedMedia(), new DocumentPreparer.Callback() {
+                        @Override
+                        public void onPrepared(@NonNull File raster) {
+                            submitDocument(raster, format, options);
+                        }
+
+                        @Override
+                        public void onFailed(@NonNull Exception error) {
+                            uploadProgress.setVisibility(View.GONE);
+                            setJobInFlight(false);
+                            setStatus(getString(R.string.error_printing,
+                                    AddPrinterActivity.describe(error)), true);
+                        }
+                    });
+            return;
+        }
+
+        submitDocument(preparedPdf, format, options);
+    }
+
+    private void submitDocument(@NonNull File document,
+                                @NonNull String format,
+                                @NonNull JobOptions options) {
+        submission = jobManager.submit(printer, document, format, options, new JobListener());
+    }
+
+    /**
+     * Formatul în care pleacă documentul: fie cel ales manual, fie cel mai bun
+     * pe care îl declară imprimanta.
+     *
+     * <p>Alegerea manuală există pentru că unele imprimante nu răspund deloc la
+     * Get-Printer-Attributes, iar atunci aplicația nu are de unde ști că trebuie
+     * raster în loc de PDF.
+     */
+    @Nullable
+    private String resolveFormat() {
+        int position = formatSpinner.getSelectedItemPosition();
+        if (position > 0 && position < formatValues.size()) {
+            return formatValues.get(position);
+        }
+        return capabilities != null
+                ? capabilities.chooseFormatForPdf()
+                : PrinterCapabilities.FORMAT_PDF;
     }
 
     /** While a job is in flight the print button doubles as the cancel button. */

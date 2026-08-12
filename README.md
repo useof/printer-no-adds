@@ -44,6 +44,7 @@ com.noads.printer
 ├── discovery/      PrinterDiscovery — mDNS prin NsdManager, cu coadă de resolve
 ├── model/          Printer, PrinterCapabilities, PrinterRepository (persistență)
 ├── render/         PageGeometry, ImageToPdf, TextToPdf, WebToPdf
+├── raster/         RasterWriter (PackBits), UrfWriter, PwgRasterWriter, PdfToRaster
 ├── print/          PrintSource, DocumentPreparer, PrintJobManager
 ├── util/           DocumentUtils, PageRanges, MediaNames
 └── ui/             MainActivity, AddPrinterActivity, PrintJobActivity
@@ -109,11 +110,12 @@ sau Android Studio îl generează.
 
 ## Limitări cunoscute
 
-- **Doar imprimante care acceptă PDF.** Aplicația trimite `application/pdf` (sau
-  `application/octet-stream` dacă imprimanta îl listează). Modelele care cer
-  exclusiv PWG-Raster / Apple URF nu sunt suportate — ar fi nevoie de un
-  rasterizator, care nu există în proiect. Cazul e detectat și raportat explicit
-  utilizatorului, nu eșuează în tăcere.
+- **Imprimantele fără interpretor de PDF** primesc raster: `image/urf` (ce trimite
+  AirPrint) sau `image/pwg-raster`. Paginile PDF-ului pregătit se randează cu
+  `PdfRenderer`, în benzi de 256 de linii, și se comprimă PackBits pe pixeli
+  întregi. Formatul se alege automat din `document-format-supported`, dar poate fi
+  forțat din ecranul de print — unele imprimante nu răspund la
+  Get-Printer-Attributes, iar atunci automatul nu are din ce alege.
 - **Fără autentificare IPP.** Un `HTTP 401` de la imprimantă e raportat ca atare;
   nu există UI de user/parolă.
 - **`ipps://` acceptă certificate self-signed.** Imprimantele nu au certificate

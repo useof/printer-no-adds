@@ -20,6 +20,8 @@ public final class PrinterCapabilities {
     public static final String FORMAT_JPEG = "image/jpeg";
     public static final String FORMAT_POSTSCRIPT = "application/postscript";
     public static final String FORMAT_OCTET_STREAM = "application/octet-stream";
+    public static final String FORMAT_URF = "image/urf";
+    public static final String FORMAT_PWG_RASTER = "image/pwg-raster";
 
     @Nullable public final String name;
     @Nullable public final String makeAndModel;
@@ -172,6 +174,14 @@ public final class PrinterCapabilities {
         }
         if (documentFormats.contains(FORMAT_PDF)) {
             return FORMAT_PDF;
+        }
+        // Înaintea lui octet-stream: o imprimantă care listează raster dar nu
+        // PDF e host-based, deci ar accepta jobul „ghicit" și l-ar arunca.
+        if (documentFormats.contains(FORMAT_URF)) {
+            return FORMAT_URF;
+        }
+        if (documentFormats.contains(FORMAT_PWG_RASTER)) {
+            return FORMAT_PWG_RASTER;
         }
         if (documentFormats.contains(FORMAT_OCTET_STREAM)) {
             // The printer sniffs the content itself; PDF usually gets through.

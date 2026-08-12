@@ -56,6 +56,12 @@
     <string name="label_sides">Sides</string>
     <string name="label_color">Colour</string>
     <string name="label_quality">Quality</string>
+    <string name="label_format">Format sent to the printer</string>
+    <string name="format_auto">Automatic</string>
+    <string name="format_pdf">PDF</string>
+    <string name="format_urf">Apple Raster (URF)</string>
+    <string name="format_pwg">PWG Raster</string>
+    <string name="format_helper">Printers without a PDF interpreter need raster. Try URF first — that is what AirPrint sends.</string>
     <string name="preview_description">Page preview</string>
     <string name="preview_unavailable">Preview unavailable</string>
     <string name="previous_page">Previous page</string>
@@ -71,6 +77,7 @@
     <string name="stage_contacting">Contacting the printer…</string>
     <string name="stage_validating">Checking the settings…</string>
     <string name="stage_uploading">Sending the document…</string>
+    <string name="stage_rasterising">Converting the pages to pixels…</string>
     <string name="stage_waiting">Waiting for the printer…</string>
     <string name="stage_cancelling">Cancelling…</string>
     <string name="cancel_job">Cancel this job</string>
@@ -94,7 +101,7 @@
     <string name="error_preparing">The document could not be prepared.\n%1$s</string>
     <string name="error_printing">Printing failed.\n%1$s</string>
     <string name="unsupported_printer_title">Format not supported</string>
-    <string name="unsupported_printer_message">This printer does not accept PDF, and this app cannot convert to the raster formats it wants. Try printing through the printer manufacturer\'s own app.</string>
+    <string name="unsupported_printer_message">This printer lists no format this app can produce. Try picking URF or PWG Raster by hand under \"Format sent to the printer\".</string>
     <string name="url_hint">example.com/page</string>
     <string name="next">Next</string>
 </resources>

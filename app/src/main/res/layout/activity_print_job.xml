@@ -272,6 +272,21 @@
                 <Spinner
                     android:id="@+id/spinner_quality"
                     style="@style/Widget.PrinterNoAds.OptionSpinner" />
+
+                <TextView
+                    style="@style/Widget.PrinterNoAds.OptionLabel"
+                    android:text="@string/label_format" />
+
+                <Spinner
+                    android:id="@+id/spinner_format"
+                    style="@style/Widget.PrinterNoAds.OptionSpinner" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/format_helper"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
             </LinearLayout>
 
             <TextView
