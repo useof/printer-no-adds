@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  IPP on port 631 is plain HTTP and printers are reached by arbitrary LAN IPs
+  (192.168.x.y, 10.x.y.z, ...) that cannot be enumerated ahead of time. A
+  domain-config cannot express "any private range" - domain entries match
+  hostnames, and an IP literal only matches itself - so cleartext is permitted
+  globally. The app only ever opens connections to addresses the user picked
+  from mDNS discovery or typed in manually.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

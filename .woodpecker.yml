@@ -1,0 +1,90 @@
+# CI/CD pentru Printer (fără reclame) — aplicație Android nativă (Java).
+#
+# Un singur workflow, cu forma din ocl/.woodpecker/2-imobile.yml (pasul deploy-apk):
+#   PR         -> build gate: se construiește APK-ul, nu se deployează nimic
+#   push main  -> build + (re)deploy pe slotul propriu
+#
+# Ținta de deploy (doar main):
+#   printer.d.ocl.ro -> nginx cu pagina de download + /a.apk (host :18056)
+#
+# Vhost-ul central stă în ocl-infra/redirects.csv:
+#   printer.d.ocl.ro,http://10.10.10.101:18056/
+#
+# Ca la celelalte pipeline-uri, imaginea se construiește local pe host-ul de deploy
+# prin docker.sock montat — fără registry, fără hop de ssh.
+#
+# APK-ul e de DEBUG, semnat cu app/debug.keystore (commitat), deci fiecare build are
+# aceeași semnătură și se instalează peste cel precedent. Nu există build de release
+# semnat cât timp nu există o cheie de upload.
+when:
+  - event: [pull_request, manual]
+  - event: push
+    branch: main
+
+steps:
+  # ---------------------------------------------------------------------------
+  # BUILD GATE (PR) — construiește doar stage-ul `apk` din Dockerfile, ca să prindem
+  # erorile de compilare/resurse înainte de merge. Nu publică nimic.
+  # ---------------------------------------------------------------------------
+  build-apk:
+    image: docker:27-cli
+    when:
+      - event: pull_request
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    commands:
+      - |
+        set -eu
+        SHORT_SHA="$(echo "$CI_COMMIT_SHA" | cut -c1-8)"
+        echo "==> build gate: printer-no-adds:$${SHORT_SHA}"
+        DOCKER_BUILDKIT=1 docker build --target apk -t "printer-no-adds-apk:$${SHORT_SHA}" .
+
+  # ---------------------------------------------------------------------------
+  # DEPLOY (push pe main) — build complet (Gradle assembleDebug + nginx) și repornirea
+  # containerului pe portul 18056. Gradle e lent; nu depinde nimic altceva de el.
+  # ---------------------------------------------------------------------------
+  deploy:
+    image: docker:27-cli
+    when:
+      - event: push
+        branch: main
+      - event: manual
+        branch: main
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    commands:
+      - |
+        set -eu
+        PROJECT="printer-no-adds"
+        APP_HOST_PORT=18056
+        APP_IMAGE="printer-no-adds:main-${CI_COMMIT_SHA}"
+
+        echo "==> printer deploy -> :$${APP_HOST_PORT} (printer.d.ocl.ro)"
+        DOCKER_BUILDKIT=1 docker build -t "$${APP_IMAGE}" -t "printer-no-adds:main" .
+
+        echo "==> Opresc deployment-ul precedent"
+        docker compose -p "$${PROJECT}" -f docker-compose.deploy.yml down --remove-orphans || true
+
+        echo "==> Pornesc noul deployment"
+        APP_IMAGE="$${APP_IMAGE}" APP_HOST_PORT="$${APP_HOST_PORT}" \
+          docker compose -p "$${PROJECT}" -f docker-compose.deploy.yml up -d web
+
+        echo "==> Health check"
+        for i in $$(seq 1 30); do
+          if wget -q -O /dev/null "http://127.0.0.1:$${APP_HOST_PORT}/healthz"; then
+            echo "OK"
+            break
+          fi
+          if [ "$$i" = "30" ]; then
+            echo "Health check a eșuat" >&2
+            docker compose -p "$${PROJECT}" -f docker-compose.deploy.yml logs --tail 50 web || true
+            exit 1
+          fi
+          sleep 2
+        done
+
+        echo "==> Curăț imaginile printer-no-adds:main-* vechi (păstrez ultimele 3)"
+        docker images --filter "reference=printer-no-adds:main-*" --format '{{.Repository}}:{{.Tag}} {{.CreatedAt}}' \
+          | sort -k2 -r | tail -n +4 | awk '{print $$1}' | xargs -r docker image rm 2>/dev/null || true
+
+        echo "==> Live: https://printer.d.ocl.ro  (APK: https://printer.d.ocl.ro/a.apk)"

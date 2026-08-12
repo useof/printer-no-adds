@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Printer</string>
+
+    <!-- Main screen -->
+    <string name="what_to_print">What do you want to print?</string>
+    <string name="print_document">Document</string>
+    <string name="print_photo">Photos</string>
+    <string name="print_web_page">Web page</string>
+    <string name="add_printer">Add printer</string>
+    <string name="add_printer_manually">Add a printer</string>
+    <string name="printers_header">PRINTERS ON THIS NETWORK</string>
+    <string name="empty_searching">Looking for printers…\nMake sure your phone is on the same Wi-Fi network as the printer.</string>
+    <string name="empty_not_searching">No printers found.\nPull down to search again, or add one by IP address.</string>
+    <string name="rescan">Search again</string>
+    <string name="selected_printer">Selected</string>
+    <string name="secure_connection">Encrypted connection</string>
+    <string name="printer_selected">%1$s selected</string>
+    <string name="select_a_printer_first">Choose a printer to continue</string>
+    <string name="cannot_remove_discovered">Printers found automatically cannot be removed. Turn off Wi-Fi discovery on the printer instead.</string>
+    <string name="remove_printer_title">Remove printer?</string>
+    <string name="remove_printer_message">%1$s will be removed from the list. You can add it again at any time.</string>
+    <string name="remove">Remove</string>
+    <string name="shared_text">Shared text</string>
+
+    <!-- Add printer -->
+    <string name="add_printer_explainer">Use this when the printer does not show up automatically — for example on a different network segment, or with Bonjour disabled.</string>
+    <string name="label_host">IP address or host name</string>
+    <string name="label_port">Port</string>
+    <string name="label_path">Path</string>
+    <string name="label_display_name">Name (optional)</string>
+    <string name="label_use_ipps">Use an encrypted connection (ipps)</string>
+    <string name="default_resource_path">ipp/print</string>
+    <string name="test_connection">Test</string>
+    <string name="save">Save</string>
+    <string name="testing_connection">Contacting %1$s…</string>
+    <string name="printer_reachable">Printer answered.</string>
+    <string name="printer_unreachable">Could not reach the printer.\n%1$s</string>
+    <string name="printer_unreachable_short">Not responding</string>
+    <string name="warning_no_pdf_support">This printer does not list PDF among the formats it accepts, so printing may fail.</string>
+    <string name="error_host_required">Enter an IP address or host name</string>
+    <string name="error_bad_port">Enter a port between 1 and 65535</string>
+
+    <!-- Print job -->
+    <string name="print_title">Print</string>
+    <string name="print_now">Print</string>
+    <string name="change">Change</string>
+    <string name="options_header">OPTIONS</string>
+    <string name="label_copies">Copies</string>
+    <string name="label_pages">Pages</string>
+    <string name="pages_helper">All pages, or e.g. 1-3, 5</string>
+    <string name="label_paper">Paper size</string>
+    <string name="label_sides">Sides</string>
+    <string name="label_color">Colour</string>
+    <string name="label_quality">Quality</string>
+    <string name="preview_description">Page preview</string>
+    <string name="preview_unavailable">Preview unavailable</string>
+    <string name="previous_page">Previous page</string>
+    <string name="next_page">Next page</string>
+    <string name="page_of">Page %1$d of %2$d</string>
+    <string name="checking_printer">Checking the printer…</string>
+    <string name="preparing_document">Preparing the document…</string>
+    <string name="untitled_document">Document</string>
+    <string name="capabilities_failed">Could not read the printer settings, so defaults are being used.\n%1$s</string>
+    <string name="printer_not_accepting_jobs">This printer is not accepting jobs right now.</string>
+
+    <!-- Job stages and states -->
+    <string name="stage_contacting">Contacting the printer…</string>
+    <string name="stage_validating">Checking the settings…</string>
+    <string name="stage_uploading">Sending the document…</string>
+    <string name="stage_waiting">Waiting for the printer…</string>
+    <string name="stage_cancelling">Cancelling…</string>
+    <string name="cancel_job">Cancel this job</string>
+    <string name="error_cancelling">The job could not be cancelled — it may already be printing.\n%1$s</string>
+    <string name="job_submitted">Sent to the printer</string>
+    <string name="job_submitted_with_id">Sent to the printer (job %1$d)</string>
+    <string name="job_pending">Queued</string>
+    <string name="job_held">Held by the printer</string>
+    <string name="job_processing">Printing…</string>
+    <string name="job_stopped">Paused — check the printer</string>
+    <string name="job_canceled">Cancelled</string>
+    <string name="job_aborted">The printer aborted this job</string>
+    <string name="job_completed">Printed</string>
+    <string name="job_unknown_state">Sent</string>
+
+    <!-- Errors -->
+    <string name="error_title">Something went wrong</string>
+    <string name="error_unsupported_file">That file type cannot be printed. Try a PDF, an image, or a text file.</string>
+    <string name="error_empty_url">Enter a web address</string>
+    <string name="error_job_setup">This print job could not be set up. Try choosing the file again.</string>
+    <string name="error_preparing">The document could not be prepared.\n%1$s</string>
+    <string name="error_printing">Printing failed.\n%1$s</string>
+    <string name="unsupported_printer_title">Format not supported</string>
+    <string name="unsupported_printer_message">This printer does not accept PDF, and this app cannot convert to the raster formats it wants. Try printing through the printer manufacturer\'s own app.</string>
+    <string name="url_hint">example.com/page</string>
+    <string name="next">Next</string>
+</resources>

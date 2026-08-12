@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fitsSystemWindows="true">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:title="@string/app_name" />
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="@dimen/spacing_medium"
+            app:cardCornerRadius="@dimen/card_corner"
+            app:cardElevation="0dp"
+            app:strokeColor="?attr/colorOutline"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/spacing_medium">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/what_to_print"
+                    android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_small"
+                    android:baselineAligned="false"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:id="@+id/action_print_document"
+                        style="@style/Widget.PrinterNoAds.ActionTile">
+
+                        <ImageView
+                            style="@style/Widget.PrinterNoAds.ActionTile.Icon"
+                            android:contentDescription="@string/print_document"
+                            android:src="@drawable/ic_document" />
+
+                        <TextView
+                            style="@style/Widget.PrinterNoAds.ActionTile.Label"
+                            android:text="@string/print_document" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/action_print_photo"
+                        style="@style/Widget.PrinterNoAds.ActionTile">
+
+                        <ImageView
+                            style="@style/Widget.PrinterNoAds.ActionTile.Icon"
+                            android:contentDescription="@string/print_photo"
+                            android:src="@drawable/ic_image" />
+
+                        <TextView
+                            style="@style/Widget.PrinterNoAds.ActionTile.Label"
+                            android:text="@string/print_photo" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/action_print_web"
+                        style="@style/Widget.PrinterNoAds.ActionTile">
+
+                        <ImageView
+                            style="@style/Widget.PrinterNoAds.ActionTile.Icon"
+                            android:contentDescription="@string/print_web_page"
+                            android:src="@drawable/ic_web" />
+
+                        <TextView
+                            style="@style/Widget.PrinterNoAds.ActionTile.Label"
+                            android:text="@string/print_web_page" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/action_add_printer"
+                        style="@style/Widget.PrinterNoAds.ActionTile">
+
+                        <ImageView
+                            style="@style/Widget.PrinterNoAds.ActionTile.Icon"
+                            android:contentDescription="@string/add_printer"
+                            android:src="@drawable/ic_add" />
+
+                        <TextView
+                            style="@style/Widget.PrinterNoAds.ActionTile.Label"
+                            android:text="@string/add_printer" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/spacing_large"
+            android:layout_marginEnd="@dimen/spacing_large"
+            android:layout_marginBottom="@dimen/spacing_small"
+            android:text="@string/printers_header"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            android:textColor="?attr/colorPrimary" />
+
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipe_refresh"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/printer_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:clipToPadding="false"
+                    android:paddingBottom="@dimen/spacing_large" />
+
+                <LinearLayout
+                    android:id="@+id/empty_state"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="@dimen/spacing_large"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:layout_width="72dp"
+                        android:layout_height="72dp"
+                        android:alpha="0.4"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_printer"
+                        app:tint="?attr/colorOnSurfaceVariant" />
+
+                    <TextView
+                        android:id="@+id/empty_state_message"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacing_medium"
+                        android:gravity="center"
+                        android:text="@string/empty_searching"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+            </FrameLayout>
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+    </LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

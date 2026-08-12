@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#1B6C4A</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="surface">#FBFDF8</color>
+    <color name="on_surface">#191C1A</color>
+    <color name="on_surface_variant">#414942</color>
+    <color name="outline">#717972</color>
+    <color name="selected_item">#D7F0DF</color>
+    <color name="preview_background">#E4E7E3</color>
+    <color name="error">#BA1A1A</color>
+    <color name="launcher_background">#1B6C4A</color>
+</resources>

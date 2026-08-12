@@ -1,0 +1,15 @@
+# Stack-ul de deploy pentru Printer (fără reclame) — folosit de .woodpecker.yml.
+#
+# Un singur container: nginx cu APK-ul la /a.apk și pagina de download la /.
+# nginx-ul central din ocl-infra (redirects.csv) mapează:
+#   printer.d.ocl.ro -> 10.10.10.101:18056
+#
+# Env in (setat de pipeline):
+#   APP_IMAGE      imaginea de rulat (printer-no-adds:main-<sha>)
+#   APP_HOST_PORT  portul de pe host (18056)
+services:
+  web:
+    image: ${APP_IMAGE:-printer-no-adds:main}
+    restart: unless-stopped
+    ports:
+      - "${APP_HOST_PORT:-18056}:80"
