@@ -26,6 +26,11 @@ altă aplicație (`ACTION_SEND`), fie prin deschiderea unui PDF (`ACTION_VIEW`).
 - Orientare portret/peisaj: documentele generate sunt randate în orientarea aleasă,
   iar jobul trimite și `orientation-requested` (singurul efect pentru PDF-urile
   trimise ca atare)
+- **Raster pentru imprimantele fără interpretor de PDF**: `image/urf` (ce trimite
+  AirPrint) și `image/pwg-raster`. Paginile se randează cu `PdfRenderer` în benzi de
+  256 de linii și se comprimă PackBits pe pixeli întregi. Formatul se alege automat
+  din `document-format-supported`, dar poate fi și forțat din ecranul de print,
+  pentru imprimantele care nu răspund la Get-Printer-Attributes
 - Interval de pagini (`1-3, 5`), trimis ca `page-ranges` (rangeOfInteger)
 - Nivel de toner/cerneală din atributele `marker-*`
 - Progres la upload, urmărirea stării jobului și **anulare** (`Cancel-Job`)
@@ -110,12 +115,10 @@ sau Android Studio îl generează.
 
 ## Limitări cunoscute
 
-- **Imprimantele fără interpretor de PDF** primesc raster: `image/urf` (ce trimite
-  AirPrint) sau `image/pwg-raster`. Paginile PDF-ului pregătit se randează cu
-  `PdfRenderer`, în benzi de 256 de linii, și se comprimă PackBits pe pixeli
-  întregi. Formatul se alege automat din `document-format-supported`, dar poate fi
-  forțat din ecranul de print — unele imprimante nu răspund la
-  Get-Printer-Attributes, iar atunci automatul nu are din ce alege.
+- **PWG Raster e scris după specificație, dar netestat pe hardware.** URF e
+  confirmat pe Xerox WorkCentre 3025; PWG Raster a fost refuzat acolo pentru că
+  imprimanta nu îl listează, deci antetul lui de 1796 de octeți e verificat doar
+  cu un decodor propriu, nu de o imprimantă reală.
 - **Fără autentificare IPP.** Un `HTTP 401` de la imprimantă e raportat ca atare;
   nu există UI de user/parolă.
 - **`ipps://` acceptă certificate self-signed.** Imprimantele nu au certificate
