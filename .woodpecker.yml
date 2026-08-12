@@ -69,9 +69,14 @@ steps:
         APP_IMAGE="$${APP_IMAGE}" APP_HOST_PORT="$${APP_HOST_PORT}" \
           docker compose -p "$${PROJECT}" -f docker-compose.deploy.yml up -d web
 
+        # Health check DIN interiorul containerului. Pasul rulează în containerul
+        # docker:27-cli, unde 127.0.0.1 e loopback-ul lui, nu al host-ului, deci
+        # portul publicat pe host nu e vizibil de aici (asta a picat pipeline-ul #4,
+        # cu nginx pornit corect).
         echo "==> Health check"
         for i in $$(seq 1 30); do
-          if wget -q -O /dev/null "http://127.0.0.1:$${APP_HOST_PORT}/healthz"; then
+          if docker compose -p "$${PROJECT}" -f docker-compose.deploy.yml \
+               exec -T web wget -q -O /dev/null "http://127.0.0.1/healthz"; then
             echo "OK"
             break
           fi
