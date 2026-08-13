@@ -107,12 +107,13 @@ public final class DocumentPreparer {
                           int dpi,
                           boolean grayscale,
                           @Nullable String mediaName,
+                          @Nullable int[][] pageRanges,
                           @NonNull Callback callback) {
         executor.execute(() -> {
             try {
                 File raster = PdfToRaster.convert(pdf,
                         DocumentUtils.newJobFile(context, ".raster"),
-                        format, dpi, grayscale, mediaName);
+                        format, dpi, grayscale, mediaName, pageRanges);
                 mainHandler.post(() -> callback.onPrepared(raster));
             } catch (Exception e) {
                 mainHandler.post(() -> callback.onFailed(e));

@@ -567,8 +567,13 @@ public class PrintJobActivity extends AppCompatActivity {
             // Imprimanta nu are interpretor de PDF: îi trimitem pixeli. Randarea
             // durează, deci se face pe alt fir, cu jobul marcat deja pornit.
             setStatus(getString(R.string.stage_rasterising), false);
+            // Intervalul de pagini se aplică la randare, iar atributul IPP se
+            // scoate: rasterul conține deja exact paginile cerute, iar o
+            // imprimantă care ar mai filtra o dată n-ar tipări nimic.
+            int[][] ranges = options.pageRanges;
+            options.pageRanges = null;
             preparer.rasterize(preparedPdf, format, RASTER_DPI, isMonochromeSelected(),
-                    selectedMedia(), new DocumentPreparer.Callback() {
+                    selectedMedia(), ranges, new DocumentPreparer.Callback() {
                         @Override
                         public void onPrepared(@NonNull File raster) {
                             submitDocument(raster, format, options);

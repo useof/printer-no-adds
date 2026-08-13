@@ -14,6 +14,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Transformă PDF-ul deja pregătit în pixeli, pentru imprimantele care nu au
@@ -56,6 +58,10 @@ public final class PdfToRaster {
      * @param grayscale  8 biți/pixel în loc de 24 — obligatoriu ca volum pentru
      *                   o imprimantă monocromă
      * @param mediaName  numele PWG al hârtiei, folosit doar de PWG Raster
+     * @param pageRanges intervale 1-based inclusive, sau null pentru tot
+     *                   documentul. Selecția se face AICI, nu prin atributul IPP
+     *                   {@code page-ranges}: rasterul e deja pagina finală, iar o
+     *                   imprimantă host-based nu are cum să mai aleagă din el.
      */
     @NonNull
     public static File convert(@NonNull File pdf,
@@ -63,21 +69,49 @@ public final class PdfToRaster {
                                @NonNull String format,
                                int dpi,
                                boolean grayscale,
-                               @Nullable String mediaName) throws IOException {
+                               @Nullable String mediaName,
+                               @Nullable int[][] pageRanges) throws IOException {
 
         try (ParcelFileDescriptor descriptor = ParcelFileDescriptor.open(
                 pdf, ParcelFileDescriptor.MODE_READ_ONLY);
-             PdfRenderer renderer = new PdfRenderer(descriptor);
-             OutputStream out = new BufferedOutputStream(new FileOutputStream(destination));
-             RasterWriter writer = FORMAT_URF.equals(format)
-                     ? new UrfWriter(out, renderer.getPageCount())
-                     : new PwgRasterWriter(out)) {
+             PdfRenderer renderer = new PdfRenderer(descriptor)) {
 
-            for (int index = 0; index < renderer.getPageCount(); index++) {
-                writePage(renderer, index, writer, dpi, grayscale, mediaName);
+            List<Integer> pages = selectPages(renderer.getPageCount(), pageRanges);
+            if (pages.isEmpty()) {
+                throw new IOException("The selected pages are not in this document");
+            }
+
+            try (OutputStream out = new BufferedOutputStream(new FileOutputStream(destination));
+                 RasterWriter writer = FORMAT_URF.equals(format)
+                         ? new UrfWriter(out, pages.size())
+                         : new PwgRasterWriter(out)) {
+
+                for (int index : pages) {
+                    writePage(renderer, index, writer, dpi, grayscale, mediaName);
+                }
             }
         }
         return destination;
+    }
+
+    /** Indicii 0-based ai paginilor cerute, în ordine și fără duplicate. */
+    private static List<Integer> selectPages(int pageCount, @Nullable int[][] pageRanges) {
+        List<Integer> pages = new ArrayList<>();
+        if (pageRanges == null || pageRanges.length == 0) {
+            for (int i = 0; i < pageCount; i++) {
+                pages.add(i);
+            }
+            return pages;
+        }
+        for (int page = 1; page <= pageCount; page++) {
+            for (int[] range : pageRanges) {
+                if (page >= range[0] && page <= range[1]) {
+                    pages.add(page - 1);
+                    break;
+                }
+            }
+        }
+        return pages;
     }
 
     private static void writePage(PdfRenderer renderer, int index, RasterWriter writer,
