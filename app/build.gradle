@@ -11,7 +11,10 @@ android {
         minSdk 24
         targetSdk 35
         versionCode 1
-        versionName "1.0"
+        // SHA-ul commit-ului intră în versiune, ca un raport de crash sau ecranul
+        // principal să spună exact ce build e instalat. Vine prin build-arg din
+        // Dockerfile; local rămâne "dev".
+        versionName "1.0-" + (System.getenv("BUILD_SHA") ?: "dev")
     }
 
     // debug.keystore e COMMITAT în repo, iar `debug` îl folosește explicit în loc de

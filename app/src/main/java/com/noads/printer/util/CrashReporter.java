@@ -45,7 +45,9 @@ public final class CrashReporter {
 
         Thread.setDefaultUncaughtExceptionHandler((thread, error) -> {
             try {
-                Intent intent = CrashActivity.intentFor(appContext, describe(thread, error));
+                Intent intent = CrashActivity.intentFor(appContext,
+                        "Versiune: " + appVersion(appContext) + "\n"
+                                + describe(thread, error));
                 appContext.startActivity(intent);
             } catch (Throwable ignored) {
                 // Showing the report is best-effort; never mask the original crash.
@@ -68,6 +70,22 @@ public final class CrashReporter {
     public static boolean isCrashProcess(@NonNull Context context) {
         String name = processName();
         return name != null && name.endsWith(CRASH_PROCESS_SUFFIX);
+    }
+
+    /**
+     * Versiunea aplicației, cu SHA-ul commit-ului din care s-a construit APK-ul.
+     * Fără ea, un raport de crash nu spune ce build l-a produs, iar un raport
+     * dintr-un APK vechi trimite căutarea pe o pistă deja reparată.
+     */
+    @NonNull
+    public static String appVersion(@NonNull Context context) {
+        try {
+            String name = context.getPackageManager()
+                    .getPackageInfo(context.getPackageName(), 0).versionName;
+            return name == null ? "necunoscută" : name;
+        } catch (Exception e) {
+            return "necunoscută";
+        }
     }
 
     @NonNull

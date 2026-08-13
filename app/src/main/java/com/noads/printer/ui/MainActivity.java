@@ -28,6 +28,7 @@ import com.noads.printer.discovery.PrinterDiscovery;
 import com.noads.printer.model.Printer;
 import com.noads.printer.model.PrinterRepository;
 import com.noads.printer.print.PrintSource;
+import com.noads.printer.util.CrashReporter;
 
 import java.util.List;
 
@@ -63,6 +64,9 @@ public class MainActivity extends AppCompatActivity implements PrinterAdapter.Li
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        // Versiunea la vedere: altfel nu se poate spune ce build e instalat, iar
+        // un raport dintr-un APK vechi trimite căutarea pe o pistă deja reparată.
+        toolbar.setSubtitle(CrashReporter.appVersion(this));
 
         repository = PrinterApp.from(this).printers();
         discovery = new PrinterDiscovery(this);

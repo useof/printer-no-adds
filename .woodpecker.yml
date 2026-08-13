@@ -37,7 +37,9 @@ steps:
         set -eu
         SHORT_SHA="$(echo "$CI_COMMIT_SHA" | cut -c1-8)"
         echo "==> build gate: printer-no-adds:$${SHORT_SHA}"
-        DOCKER_BUILDKIT=1 docker build --target apk -t "printer-no-adds-apk:$${SHORT_SHA}" .
+        DOCKER_BUILDKIT=1 docker build --target apk \
+          --build-arg BUILD_SHA="$${SHORT_SHA}" \
+          -t "printer-no-adds-apk:$${SHORT_SHA}" .
 
   # ---------------------------------------------------------------------------
   # DEPLOY (push pe main) — build complet (Gradle assembleDebug + nginx) și repornirea
@@ -60,7 +62,10 @@ steps:
         APP_IMAGE="printer-no-adds:main-${CI_COMMIT_SHA}"
 
         echo "==> printer deploy -> :$${APP_HOST_PORT} (printer.d.ocl.ro)"
-        DOCKER_BUILDKIT=1 docker build -t "$${APP_IMAGE}" -t "printer-no-adds:main" .
+        SHORT_SHA="$(echo "$CI_COMMIT_SHA" | cut -c1-8)"
+        DOCKER_BUILDKIT=1 docker build \
+          --build-arg BUILD_SHA="$${SHORT_SHA}" \
+          -t "$${APP_IMAGE}" -t "printer-no-adds:main" .
 
         echo "==> Opresc deployment-ul precedent"
         docker compose -p "$${PROJECT}" -f docker-compose.deploy.yml down --remove-orphans || true

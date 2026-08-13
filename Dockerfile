@@ -18,6 +18,8 @@
 FROM ghcr.io/cirruslabs/android-sdk:35 AS apk
 
 ARG GRADLE_VERSION=8.9
+ARG BUILD_SHA=dev
+ENV BUILD_SHA=${BUILD_SHA}
 ENV GRADLE_USER_HOME=/root/.gradle
 ENV PATH=/opt/gradle/gradle-${GRADLE_VERSION}/bin:${PATH}
 
