@@ -572,6 +572,10 @@ public class PrintJobActivity extends AppCompatActivity {
             // imprimantă care ar mai filtra o dată n-ar tipări nimic.
             int[][] ranges = options.pageRanges;
             options.pageRanges = null;
+            // Rasterul e deja rotit în orientarea hârtiei, deci imprimanta nu mai
+            // trebuie să rotească nimic: un orientation-requested de peisaj ar
+            // roti a doua oară.
+            options.orientation = JobOptions.ORIENTATION_PORTRAIT;
             preparer.rasterize(preparedPdf, format, RASTER_DPI, isMonochromeSelected(),
                     selectedMedia(), ranges, new DocumentPreparer.Callback() {
                         @Override

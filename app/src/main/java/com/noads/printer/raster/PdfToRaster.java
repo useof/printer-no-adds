@@ -118,12 +118,20 @@ public final class PdfToRaster {
                                   int dpi, boolean grayscale, @Nullable String mediaName)
             throws IOException {
 
-        int widthPts;
-        int heightPts;
+        int pageWidthPts;
+        int pageHeightPts;
         try (PdfRenderer.Page page = renderer.openPage(index)) {
-            widthPts = page.getWidth();
-            heightPts = page.getHeight();
+            pageWidthPts = page.getWidth();
+            pageHeightPts = page.getHeight();
         }
+
+        // Rasterul pleacă întotdeauna în orientarea hârtiei, cu conținutul rotit
+        // dacă pagina e lată — exact ce face AirPrint. O imprimantă host-based nu
+        // poate roti nimic: dacă primește o pagină mai lată decât hârtia, o
+        // micșorează ca să încapă, și iese o imagine mică pe foaie portret.
+        boolean rotate = pageWidthPts > pageHeightPts;
+        int widthPts = rotate ? pageHeightPts : pageWidthPts;
+        int heightPts = rotate ? pageWidthPts : pageHeightPts;
 
         float scale = dpi / 72f;
         int widthPx = Math.max(1, Math.round(widthPts * scale));
@@ -143,9 +151,17 @@ public final class PdfToRaster {
                 // PdfRenderer desenează peste ce era în bitmap, iar zonele fără
                 // conținut rămân transparente: fondul alb trebuie pus explicit.
                 strip.eraseColor(Color.WHITE);
+
                 Matrix matrix = new Matrix();
                 matrix.setScale(scale, scale);
+                if (rotate) {
+                    // 90° în sensul acelor de ceas: colțul din stânga-sus al
+                    // paginii ajunge în dreapta-sus a foii.
+                    matrix.postRotate(90);
+                    matrix.postTranslate(widthPx, 0);
+                }
                 matrix.postTranslate(0, -top);
+
                 try (PdfRenderer.Page page = renderer.openPage(index)) {
                     page.render(strip, null, matrix, PdfRenderer.Page.RENDER_MODE_FOR_PRINT);
                 }
