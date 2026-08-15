@@ -35,7 +35,7 @@ public final class MediaMapping {
             new Entry("na_letter_8.5x11in", MediaSize.NA_LETTER),
             new Entry("na_legal_8.5x14in", MediaSize.NA_LEGAL),
             new Entry("na_index-4x6_4x6in", MediaSize.NA_INDEX_4X6),
-            new Entry("na_5x7_5x7in", MediaSize.NA_INDEX_5X7),
+            new Entry("na_index-5x8_5x8in", MediaSize.NA_INDEX_5X8),
     };
 
     private MediaMapping() {
