@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Meta-data pentru pluginul de printare. `settingsActivity` e ce deschide
+  Settings → Printing la apăsarea pe serviciu; `addPrintersActivity` e ecranul
+  de adăugare manuală, pentru rețelele fără mDNS. Ambele sunt lansate de
+  aplicația de Settings, deci trebuie exportate în manifest.
+-->
+<print-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="com.noads.printer.ui.MainActivity"
+    android:addPrintersActivity="com.noads.printer.ui.AddPrinterActivity"
+    android:vendor="noads" />

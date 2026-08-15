@@ -57,11 +57,30 @@
             android:excludeFromRecents="true"
             android:theme="@android:style/Theme.DeviceDefault.Light" />
 
+        <!-- exported: e ecranul „adaugă imprimantă" al pluginului de printare,
+             deci îl lansează aplicația de Settings, nu doar noi. -->
         <activity
             android:name=".ui.AddPrinterActivity"
-            android:exported="false"
+            android:exported="true"
             android:label="@string/add_printer_manually"
             android:parentActivityName=".ui.MainActivity" />
+
+        <!-- Pluginul de printare al sistemului: face ca butonul „Print" din
+             orice aplicație să ajungă la imprimantele noastre. Se activează din
+             Settings → Printing. Permisiunea BIND_PRINT_SERVICE garantează că
+             numai sistemul se poate lega de el. -->
+        <service
+            android:name=".print.NoAdsPrintService"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_PRINT_SERVICE">
+            <intent-filter>
+                <action android:name="android.printservice.PrintService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.printservice"
+                android:resource="@xml/print_service" />
+        </service>
 
     </application>
 </manifest>

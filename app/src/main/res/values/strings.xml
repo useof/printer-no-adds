@@ -97,6 +97,7 @@
     <string name="error_title">Something went wrong</string>
     <string name="error_unsupported_file">That file type cannot be printed. Try a PDF, an image, or a text file.</string>
     <string name="error_empty_url">Enter a web address</string>
+    <string name="error_printer_gone">That printer is no longer available.</string>
     <string name="error_job_setup">This print job could not be set up. Try choosing the file again.</string>
     <string name="error_preparing">The document could not be prepared.\n%1$s</string>
     <string name="error_printing">Printing failed.\n%1$s</string>

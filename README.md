@@ -26,6 +26,10 @@ altă aplicație (`ACTION_SEND`), fie prin deschiderea unui PDF (`ACTION_VIEW`).
 - Orientare portret/peisaj: documentele generate sunt randate în orientarea aleasă,
   iar jobul trimite și `orientation-requested` (singurul efect pentru PDF-urile
   trimise ca atare)
+- **Print Service de sistem**: după activarea din Settings → Printing, butonul
+  „Print" din orice aplicație ajunge la imprimantele găsite de noi, cu dialogul și
+  preview-ul native Android. Documentul vine gata ca PDF și trece prin aceeași
+  conductă ca ecranul propriu
 - **Raster pentru imprimantele fără interpretor de PDF**: `image/urf` (ce trimite
   AirPrint) și `image/pwg-raster`. Paginile se randează cu `PdfRenderer` în benzi de
   256 de linii și se comprimă PackBits pe pixeli întregi. Formatul se alege automat
@@ -50,7 +54,8 @@ com.noads.printer
 ├── model/          Printer, PrinterCapabilities, PrinterRepository (persistență)
 ├── render/         PageGeometry, ImageToPdf, TextToPdf, WebToPdf
 ├── raster/         RasterWriter (PackBits), UrfWriter, PwgRasterWriter, PdfToRaster
-├── print/          PrintSource, DocumentPreparer, PrintJobManager
+├── print/          PrintSource, DocumentPreparer, PrintJobManager,
+│                   NoAdsPrintService + IppPrinterDiscoverySession (plugin de sistem)
 ├── util/           DocumentUtils, PageRanges, MediaNames
 └── ui/             MainActivity, AddPrinterActivity, PrintJobActivity
 ```
