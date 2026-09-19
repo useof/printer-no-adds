@@ -24,6 +24,8 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.noads.printer.PrinterApp;
 import com.noads.printer.R;
 import com.noads.printer.ipp.Ipp;
@@ -32,6 +34,7 @@ import com.noads.printer.model.Printer;
 import com.noads.printer.model.PrinterCapabilities;
 import com.noads.printer.model.PrinterRepository;
 import com.noads.printer.print.DocumentPreparer;
+import com.noads.printer.print.PdfDecryptor;
 import com.noads.printer.print.PrintJobManager;
 import com.noads.printer.print.PrintSource;
 import com.noads.printer.raster.PdfToRaster;
@@ -107,6 +110,10 @@ public class PrintJobActivity extends AppCompatActivity {
 
     /** Same, pentru alb-negru: o poză color trebuie re-randată dacă se comută. */
     private boolean renderedForGrayscale;
+
+    /** Parola introdusă pentru un PDF criptat; {@code null} până o cere documentul. */
+    @Nullable
+    private String pdfPassword;
 
     private ViewGroup root;
     private ViewGroup webContainer;
@@ -453,7 +460,7 @@ public class PrintJobActivity extends AppCompatActivity {
         geometry = renderedForOrientation == JobOptions.ORIENTATION_LANDSCAPE
                 ? geometry.landscape()
                 : geometry.portrait();
-        preparer.prepare(source, geometry, renderedForGrayscale, webContainer,
+        preparer.prepare(source, geometry, renderedForGrayscale, pdfPassword, webContainer,
                 new DocumentPreparer.Callback() {
             @Override
             public void onPrepared(@NonNull File pdf) {
@@ -465,10 +472,51 @@ public class PrintJobActivity extends AppCompatActivity {
             @Override
             public void onFailed(@NonNull Exception error) {
                 previewProgress.setVisibility(View.GONE);
+                if (error instanceof PdfDecryptor.PasswordRequiredException) {
+                    clearStatus();
+                    askForPdfPassword(((PdfDecryptor.PasswordRequiredException) error).wrongPassword);
+                    return;
+                }
                 showFatal(getString(R.string.error_preparing,
                         AddPrinterActivity.describe(error)));
             }
         });
+    }
+
+    /** Cere parola de deschidere a PDF-ului și reia pregătirea cu ea. */
+    private void askForPdfPassword(boolean previousWasWrong) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        View content = getLayoutInflater().inflate(R.layout.dialog_pdf_password, null);
+        TextInputLayout layout = content.findViewById(R.id.pdf_password_layout);
+        TextInputEditText input = content.findViewById(R.id.pdf_password_input);
+        if (previousWasWrong) {
+            layout.setError(getString(R.string.pdf_password_wrong));
+        }
+
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.pdf_password_title)
+                .setMessage(getString(R.string.pdf_password_message, source.displayName))
+                .setView(content)
+                .setCancelable(false)
+                .setPositiveButton(R.string.pdf_password_open, (d, which) -> {
+                    CharSequence typed = input.getText();
+                    pdfPassword = typed == null ? "" : typed.toString();
+                    prepareDocument();
+                })
+                .setNegativeButton(android.R.string.cancel, (d, which) -> finish())
+                .create();
+        input.setOnEditorActionListener((v, actionId, event) -> {
+            dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).performClick();
+            return true;
+        });
+        dialog.setOnShowListener(d -> input.requestFocus());
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setSoftInputMode(
+                    android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+        }
+        dialog.show();
     }
 
     private void openPreview(File pdf) {

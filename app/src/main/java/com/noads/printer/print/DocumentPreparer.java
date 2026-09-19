@@ -30,7 +30,8 @@ import java.util.concurrent.Executors;
 /**
  * Turns a {@link PrintSource} into a PDF file in the cache directory.
  *
- * <p>PDFs pass through untouched; images, text, and web pages are rendered.
+ * <p>PDFs pass through untouched, except that encryption is removed; images,
+ * text, and web pages are rendered.
  */
 public final class DocumentPreparer {
 
@@ -56,11 +57,14 @@ public final class DocumentPreparer {
      *                  monocrome, care altfel trebuie să facă ele conversia.
      * @param container needed only for {@link PrintSource.Kind#WEB_PAGE}, which
      *                  renders through an off-screen WebView.
+     * @param pdfPassword parola de deschidere a unui PDF criptat; fără ea, un astfel
+     *                  de PDF eșuează cu {@link PdfDecryptor.PasswordRequiredException}.
      */
     @MainThread
     public void prepare(@NonNull PrintSource source,
                         @NonNull PageGeometry geometry,
                         boolean grayscale,
+                        @Nullable String pdfPassword,
                         @Nullable ViewGroup container,
                         @NonNull Callback callback) {
 
@@ -88,7 +92,7 @@ public final class DocumentPreparer {
 
         executor.execute(() -> {
             try {
-                File pdf = convertBlocking(source, geometry, grayscale);
+                File pdf = convertBlocking(source, geometry, grayscale, pdfPassword);
                 mainHandler.post(() -> callback.onPrepared(pdf));
             } catch (Exception e) {
                 mainHandler.post(() -> callback.onFailed(e));
@@ -125,14 +129,25 @@ public final class DocumentPreparer {
     @NonNull
     public File convertBlocking(@NonNull PrintSource source,
                                 @NonNull PageGeometry geometry,
-                                boolean grayscale) throws IOException {
+                                boolean grayscale,
+                                @Nullable String pdfPassword) throws IOException {
         File destination = DocumentUtils.newJobFile(context, ".pdf");
 
         switch (source.kind) {
             case PDF: {
                 DocumentUtils.copyTo(context, source.uris.get(0), destination);
                 assertLooksLikePdf(destination);
-                return destination;
+                if (!PdfDecryptor.isEncrypted(destination)) {
+                    return destination;
+                }
+                File decrypted = DocumentUtils.newJobFile(context, ".pdf");
+                try {
+                    PdfDecryptor.decrypt(context, destination, pdfPassword, decrypted);
+                } finally {
+                    //noinspection ResultOfMethodCallIgnored
+                    destination.delete();
+                }
+                return decrypted;
             }
 
             case IMAGES: {

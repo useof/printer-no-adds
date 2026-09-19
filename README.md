@@ -9,7 +9,7 @@ tot ce face aplicația se întâmplă între telefon și imprimanta din rețeaua
 
 | Sursă | Cum e tratată |
 |---|---|
-| PDF | trimis ca atare, după verificarea antetului `%PDF-` |
+| PDF | trimis ca atare, după verificarea antetului `%PDF-`; un PDF criptat e decriptat local (PdfBox-Android), cu parola cerută într-un dialog dacă are parolă de deschidere |
 | Imagini (JPEG/PNG/WebP/HEIF) | randate într-un PDF, o imagine pe pagină, cu rotația EXIF aplicată |
 | Text (`text/*`, JSON, XML) | paginat cu `StaticLayout`, cu antet și număr de pagină |
 | Pagini web | încărcate într-un `WebView` off-screen și desenate în PDF, felie cu felie |

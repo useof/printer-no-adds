@@ -100,6 +100,11 @@
     <string name="error_printer_gone">That printer is no longer available.</string>
     <string name="error_job_setup">This print job could not be set up. Try choosing the file again.</string>
     <string name="error_preparing">The document could not be prepared.\n%1$s</string>
+    <string name="pdf_password_title">Password protected PDF</string>
+    <string name="pdf_password_message">Enter the password to open “%1$s”. It is used only on this phone, to unlock the document before printing.</string>
+    <string name="pdf_password_hint">Password</string>
+    <string name="pdf_password_open">Open</string>
+    <string name="pdf_password_wrong">Wrong password, try again</string>
     <string name="error_printing">Printing failed.\n%1$s</string>
     <string name="unsupported_printer_title">Format not supported</string>
     <string name="unsupported_printer_message">This printer lists no format this app can produce. Try picking URF or PWG Raster by hand under \"Format sent to the printer\".</string>
